@@ -1,0 +1,1 @@
+import{handleError,ok}from"@/lib/http/api";import{requireAdmin}from"@/modules/auth/service";import{prisma}from"@/lib/db/prisma";export async function GET(){try{await requireAdmin("reviews.write");return ok(await prisma.review.findMany({include:{product:true,media:true,replies:true},orderBy:{createdAt:"desc"},take:100}))}catch(e){return handleError(e)}}

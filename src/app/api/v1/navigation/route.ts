@@ -1,0 +1,2 @@
+import{handleError,ok,ApiError}from"@/lib/http/api";import{prisma}from"@/lib/db/prisma";
+export async function GET(){try{const v=await prisma.navigationVersion.findFirst({where:{status:"PUBLISHED"},orderBy:{version:"desc"}})??await prisma.navigationVersion.findFirst({orderBy:{version:"desc"}});if(!v)throw new ApiError("NOT_FOUND","Navigation not found",404);return ok(v.content)}catch(e){return handleError(e)}}

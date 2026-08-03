@@ -1,0 +1,25 @@
+openapi: 3.1.0
+info:
+  title: Ruvaya Admin and Storefront API
+  version: 1.0.0
+servers:
+  - url: https://admin.ruvaya.in/api/v1
+paths:
+  /products:
+    get: { summary: List published products, responses: { '200': { description: Product list envelope } } }
+  /products/{slug}:
+    get: { summary: Get a published product, parameters: [{ in: path, name: slug, required: true, schema: { type: string } }], responses: { '200': { description: Product envelope }, '404': { description: Not found } } }
+  /cart/validate:
+    post: { summary: Recalculate availability and totals, responses: { '200': { description: Validated cart } } }
+  /checkout:
+    post: { summary: Create an idempotent order and Cashfree session, responses: { '201': { description: Checkout created }, '409': { description: Product unavailable } } }
+  /payments/status:
+    get: { summary: Verify payment status, responses: { '200': { description: Server-verified status } } }
+  /payments/retry:
+    post: { summary: Create a new payment attempt for the same order, responses: { '200': { description: Payment session } } }
+  /orders/track:
+    post: { summary: Exchange order/contact match for opaque token, responses: { '200': { description: Secure token } } }
+  /orders/{secureToken}:
+    get: { summary: Get order through opaque token, responses: { '200': { description: Order detail } } }
+  /webhooks/cashfree:
+    post: { summary: Verified Cashfree webhook, responses: { '200': { description: Accepted }, '401': { description: Invalid signature } } }

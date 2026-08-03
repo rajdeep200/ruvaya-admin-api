@@ -1,0 +1,1 @@
+import{handleError,ok}from"@/lib/http/api";import{requireAdmin}from"@/modules/auth/service";import{prisma}from"@/lib/db/prisma";export async function GET(){try{await requireAdmin("customers.sensitive.read");return ok(await prisma.customer.findMany({include:{_count:{select:{orders:true}}},orderBy:{createdAt:"desc"},take:100}))}catch(e){return handleError(e)}}

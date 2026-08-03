@@ -1,0 +1,3 @@
+import { ProductEditor } from "@/components/admin/ProductEditor";
+import { prisma } from "@/lib/db/prisma";
+export default async function NewProductAdvancedPage(){const collections=await prisma.collection.findMany({orderBy:{name:"asc"},select:{id:true,name:true,slug:true,active:true,publishedAt:true}});return<><div className="header"><div><h1>New product — advanced</h1><p className="muted">Full form with every field. Most people should use the simpler <a href="/admin/products/new">guided add-product flow</a> instead.</p></div></div><ProductEditor collections={collections.map(item=>({...item,publishedAt:item.publishedAt?.toISOString()??null}))}/></>}

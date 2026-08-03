@@ -1,0 +1,1 @@
+import{handleError,ok}from"@/lib/http/api";import{orderByToken}from"@/modules/orders/service";export async function GET(_:Request,{params}:{params:Promise<{secureToken:string}>}){try{return ok(await orderByToken((await params).secureToken))}catch(e){return handleError(e)}}

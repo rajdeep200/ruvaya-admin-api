@@ -1,0 +1,1 @@
+const neutral=(v:unknown)=>{const s=v==null?"":String(v);return/^[=+\-@\t\r]/.test(s)?`'${s}`:s};const cell=(v:unknown)=>`"${neutral(v).replaceAll('"','""')}"`;export function csv(rows:Record<string,unknown>[]){if(!rows.length)return"";const keys=Object.keys(rows[0]);return[keys.map(cell).join(","),...rows.map(r=>keys.map(k=>cell(r[k])).join(","))].join("\r\n")}

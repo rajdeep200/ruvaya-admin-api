@@ -1,0 +1,1 @@
+import{z}from"zod";import{handleError,ok,parseJson}from"@/lib/http/api";import{resetPassword}from"@/modules/auth/service";export async function POST(r:Request){try{const x=z.object({token:z.string().min(20),password:z.string().min(12)}).parse(await parseJson(r));await resetPassword(x.token,x.password);return ok({reset:true})}catch(e){return handleError(e)}}

@@ -1,0 +1,3 @@
+import {handleError,ok,parseJson}from"@/lib/http/api";import{requireAdmin}from"@/modules/auth/service";import{productEditorUpdateSchema}from"@/modules/products/schemas";import{getAdminProduct,updateProduct}from"@/modules/products/service";
+export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){try{await requireAdmin("catalogue.read");return ok(await getAdminProduct((await params).id))}catch(e){return handleError(e)}}
+export async function PATCH(request:Request,{params}:{params:Promise<{id:string}>}){try{const admin=await requireAdmin("catalogue.write");return ok(await updateProduct((await params).id,productEditorUpdateSchema.parse(await parseJson(request)),admin.id))}catch(e){return handleError(e)}}

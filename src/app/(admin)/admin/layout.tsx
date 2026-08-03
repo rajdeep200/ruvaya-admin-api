@@ -1,0 +1,1 @@
+import{redirect}from"next/navigation";import{currentAdmin}from"@/modules/auth/service";import{Shell}from"@/components/admin/Shell";export const dynamic="force-dynamic";export default async function AdminLayout({children}:{children:React.ReactNode}){const user=await currentAdmin();if(!user)redirect("/admin/login");return<Shell user={user.displayName}>{children}</Shell>}

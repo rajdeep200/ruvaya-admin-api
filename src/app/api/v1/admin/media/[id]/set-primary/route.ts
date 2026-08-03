@@ -1,0 +1,1 @@
+import{handleError,ok}from"@/lib/http/api";import{requireAdmin}from"@/modules/auth/service";import{setPrimaryMedia}from"@/modules/media/service";export async function POST(_:Request,{params}:{params:Promise<{id:string}>}){try{const admin=await requireAdmin("catalogue.write");return ok(await setPrimaryMedia((await params).id,admin.id))}catch(error){return handleError(error)}}

@@ -1,0 +1,3 @@
+export const PERMISSIONS=["catalogue.read","catalogue.write","orders.read","orders.write","customers.sensitive.read","payments.reconcile","refunds.write","reviews.write","marketing.write","analytics.read","settings.write","audit.read","exports.read"] as const;
+export type Permission=(typeof PERMISSIONS)[number];
+export const ROLE_PERMISSIONS:Record<string,readonly Permission[]>={SUPER_ADMIN:PERMISSIONS,CATALOGUE_MANAGER:["catalogue.read","catalogue.write"],ORDER_MANAGER:["orders.read","orders.write","payments.reconcile"],SUPPORT_MANAGER:["orders.read","customers.sensitive.read","reviews.write"],MARKETING_MANAGER:["catalogue.read","marketing.write","analytics.read"],ANALYTICS_VIEWER:["analytics.read"]};

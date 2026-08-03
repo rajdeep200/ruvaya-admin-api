@@ -1,0 +1,1 @@
+import{z}from"zod";import{handleError,ok,parseJson}from"@/lib/http/api";import{trackOrder}from"@/modules/orders/service";export async function POST(r:Request){try{const x=z.object({orderNumber:z.string().min(3),contact:z.string().min(3)}).parse(await parseJson(r));return ok(await trackOrder(x.orderNumber,x.contact))}catch(e){return handleError(e)}}
