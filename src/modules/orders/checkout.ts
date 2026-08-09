@@ -5,6 +5,7 @@ import type { z } from "zod";
 import { env } from "@/config/env";
 import { createCashfreeOrder, getCashfreeOrder, type CashfreeOrder } from "@/lib/cashfree/client";
 import { prisma } from "@/lib/db/prisma";
+import { withSerializableRetry } from "@/lib/db/serializableRetry";
 import { ApiError } from "@/lib/http/api";
 import { paiseToRupees } from "@/lib/money";
 import { hashToken, randomToken } from "@/lib/security/crypto";
@@ -74,7 +75,7 @@ export async function checkout(input: Checkout, headerKey: string | undefined, a
   try {
     const cart = await validateCart({ ...input, pincode: input.address.pincode });
     if (cart.isCheckoutBlocked) throw new ApiError("PRODUCT_UNAVAILABLE", "One or more products are unavailable", 409, { lines: cart.lines });
-    await prisma.$transaction(async (tx) => {
+    await withSerializableRetry(() => prisma.$transaction(async (tx) => {
       const products = await tx.product.findMany({ where: { id: { in: input.lines.map((line) => line.productId) }, status: "PUBLISHED", active: true, deletedAt: null }, include: { variants: true } });
       const { fullName, phone, email, addressLine, locality, landmark, city, state, pincode } = input.address;
       const customer = await tx.customer.create({ data: { name: fullName, email: email.toLowerCase(), phone, flags: [], addresses: { create: { fullName, phone, email, addressLine, locality, landmark, city, state, pincode } } } });
@@ -83,7 +84,7 @@ export async function checkout(input: Checkout, headerKey: string | undefined, a
       await reserveOrderItems(tx, order, new Date(Date.now() + 20 * 60_000));
       await tx.payment.create({ data: { orderId: order.id, providerOrderId, providerIdempotencyKey, status: "CREATED", amountPaise: order.totalPaise } });
       await tx.checkoutOperation.update({ where: { id: operation.id }, data: { orderId: order.id, providerOrderId, paymentCapability: capability } });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }));
     return await recoverOrCreateProviderOrder(operation.id, input, capability);
   } catch (error) {
     await prisma.checkoutOperation.update({ where: { id: operation.id }, data: { state: "FAILED", failureCode: error instanceof ApiError ? error.code : "INTERNAL_ERROR", failureMessage: error instanceof Error ? error.message : "Unknown failure" } }).catch(() => undefined);

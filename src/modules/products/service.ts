@@ -1,6 +1,7 @@
 import "server-only";
 import { Prisma, ProductStatus } from "@prisma/client";
 import { prisma, prismaTx } from "@/lib/db/prisma";
+import { withSerializableRetry } from "@/lib/db/serializableRetry";
 import { ApiError } from "@/lib/http/api";
 import { audit } from "@/modules/audit/service";
 import type { z } from "zod";
@@ -290,7 +291,7 @@ export async function saveProduct(
   if (!before || before.deletedAt)
     throw new ApiError("NOT_FOUND", "Product not found", 404);
   try {
-    const updated = await prismaTx.$transaction(
+    const updated = await withSerializableRetry(() => prismaTx.$transaction(
       async (tx) => {
         await tx.product.update({
           where: { id },
@@ -367,7 +368,7 @@ export async function saveProduct(
         maxWait: 10_000,
         timeout: 20_000,
       },
-    );
+    ));
     await audit({
       adminUserId,
       action: "PRODUCT_UPDATED",

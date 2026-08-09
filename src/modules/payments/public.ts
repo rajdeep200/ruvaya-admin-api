@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { env } from "@/config/env";
 import { createCashfreeOrder, getCashfreeOrder } from "@/lib/cashfree/client";
 import { prisma } from "@/lib/db/prisma";
+import { withSerializableRetry } from "@/lib/db/serializableRetry";
 import { ApiError } from "@/lib/http/api";
 import { paiseToRupees, rupeesToPaise } from "@/lib/money";
 import { reactivateOrderReservations } from "@/modules/inventory/service";
@@ -32,10 +33,10 @@ export async function retryPayment(capability: string) {
   const providerIdempotencyKey = randomUUID();
   const attemptNumber = await prisma.payment.count({ where: { orderId: order.id } });
   const providerOrderId = `rv_${order.id}_${attemptNumber + 1}`;
-  const payment = await prisma.$transaction(async (tx) => {
+  const payment = await withSerializableRetry(() => prisma.$transaction(async (tx) => {
     await reactivateOrderReservations(tx, order.id, new Date(Date.now() + 20 * 60_000));
     return tx.payment.create({ data: { orderId: order.id, providerOrderId, providerIdempotencyKey, status: "CREATED", amountPaise: order.totalPaise } });
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }));
   const address = order.shippingAddress as { fullName: string; email: string; phone: string };
   const cf = await createCashfreeOrder({ orderId: providerOrderId, amountRupees: paiseToRupees(order.totalPaise), customer: { id: order.customerId, name: address.fullName, email: address.email, phone: address.phone }, returnUrl: `${env.STOREFRONT_URL}/payment/status?orderId=${encodeURIComponent(capability)}`, notifyUrl: `${env.APP_URL}/api/v1/webhooks/cashfree`, idempotencyKey: providerIdempotencyKey });
   if (cf.order_id !== providerOrderId || cf.order_amount !== paiseToRupees(order.totalPaise) || cf.order_currency !== order.currency) throw new ApiError("PAYMENT_FAILED", "Cashfree retry response mismatch", 409);

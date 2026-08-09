@@ -1,6 +1,7 @@
 import "server-only";
 import { PaymentStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { withSerializableRetry } from "@/lib/db/serializableRetry";
 import { ApiError } from "@/lib/http/api";
 import { hashToken } from "@/lib/security/crypto";
 import { consumeOrderReservations, reactivateOrderReservations, releaseOrderReservations } from "@/modules/inventory/service";
@@ -16,7 +17,7 @@ export async function transitionPayment(input: {
   response?: object;
   reason: string;
 }) {
-  return prisma.$transaction(async (tx) => {
+  return withSerializableRetry(() => prisma.$transaction(async (tx) => {
     const payment = await tx.payment.findUnique({ where: { id: input.paymentId }, include: { order: { include: { customer: true } } } });
     if (!payment) throw new ApiError("NOT_FOUND", "Payment not found", 404);
     if (payment.status === "SUCCESS") return { changed: false, status: payment.status };
@@ -47,5 +48,5 @@ export async function transitionPayment(input: {
     await releaseOrderReservations(tx, payment.orderId, input.status === "EXPIRED" ? "EXPIRED" : "RELEASED", `PAYMENT_${input.status}`);
     await tx.order.updateMany({ where: { id: payment.orderId, status: { in: ["PENDING_PAYMENT", "PAYMENT_PENDING"] } }, data: { status: "PAYMENT_PENDING" } });
     return { changed: true, status: input.status };
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }));
 }
