@@ -1,6 +1,6 @@
 import "server-only";
 import { Prisma, ProductStatus } from "@prisma/client";
-import { prisma } from "@/lib/db/prisma";
+import { prisma, prismaTx } from "@/lib/db/prisma";
 import { ApiError } from "@/lib/http/api";
 import { audit } from "@/modules/audit/service";
 import type { z } from "zod";
@@ -290,7 +290,7 @@ export async function saveProduct(
   if (!before || before.deletedAt)
     throw new ApiError("NOT_FOUND", "Product not found", 404);
   try {
-    const updated = await prisma.$transaction(
+    const updated = await prismaTx.$transaction(
       async (tx) => {
         await tx.product.update({
           where: { id },
