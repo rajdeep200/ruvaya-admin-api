@@ -362,7 +362,11 @@ export async function saveProduct(
           include: adminInclude,
         });
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        maxWait: 10_000,
+        timeout: 20_000,
+      },
     );
     await audit({
       adminUserId,
