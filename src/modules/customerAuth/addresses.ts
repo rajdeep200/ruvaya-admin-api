@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/db/prisma";
+import { prisma, prismaTx } from "@/lib/db/prisma";
 import { ApiError } from "@/lib/http/api";
 
 type AddressInput = {
@@ -24,7 +24,7 @@ export async function listAddresses(accountId: string) {
 }
 
 export async function createAddress(accountId: string, input: AddressInput) {
-  return prisma.$transaction(async (tx) => {
+  return prismaTx.$transaction(async (tx) => {
     if (input.isDefault) await tx.accountAddress.updateMany({ where: { accountId }, data: { isDefault: false } });
     return tx.accountAddress.create({ data: { ...input, accountId } });
   });
@@ -33,7 +33,7 @@ export async function createAddress(accountId: string, input: AddressInput) {
 export async function updateAddress(accountId: string, id: string, input: Partial<AddressInput>) {
   const existing = await prisma.accountAddress.findFirst({ where: { id, accountId } });
   if (!existing) throw new ApiError("NOT_FOUND", "Address not found", 404);
-  return prisma.$transaction(async (tx) => {
+  return prismaTx.$transaction(async (tx) => {
     if (input.isDefault) await tx.accountAddress.updateMany({ where: { accountId }, data: { isDefault: false } });
     return tx.accountAddress.update({ where: { id }, data: input });
   });

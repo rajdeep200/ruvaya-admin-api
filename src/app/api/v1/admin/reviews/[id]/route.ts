@@ -2,7 +2,7 @@ import { z } from "zod";
 import { ReviewStatus } from "@prisma/client";
 import { handleError, ok, parseJson } from "@/lib/http/api";
 import { requireAdmin } from "@/modules/auth/service";
-import { prisma } from "@/lib/db/prisma";
+import { prisma, prismaTx } from "@/lib/db/prisma";
 import { audit } from "@/modules/audit/service";
 import { destroyCloudinaryResource } from "@/lib/cloudinary/client";
 
@@ -18,7 +18,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .parse(await parseJson(request));
     const id = (await params).id;
     const before = await prisma.review.findUniqueOrThrow({ where: { id } });
-    const after = await prisma.$transaction(async (tx) => {
+    const after = await prismaTx.$transaction(async (tx) => {
       const v = await tx.review.update({ where: { id }, data: { status: input.status, featured: input.featured } });
       if (input.adminReply) await tx.reviewReply.create({ data: { reviewId: id, body: input.adminReply, adminUserId: admin.id } });
       return v;

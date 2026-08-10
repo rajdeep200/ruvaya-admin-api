@@ -1,6 +1,6 @@
 import "server-only";
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db/prisma";
+import { prisma, prismaTx } from "@/lib/db/prisma";
 import {
   destroyCloudinaryResource,
   getCloudinaryResource,
@@ -301,7 +301,7 @@ export async function deleteMedia(id: string, adminUserId: string) {
     );
   }
   try {
-    await prisma.$transaction(async (tx) => {
+    await prismaTx.$transaction(async (tx) => {
       await tx.productVariant.updateMany({
         where: { mediaId: id },
         data: { mediaId: null },

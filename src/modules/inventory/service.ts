@@ -1,6 +1,6 @@
 import "server-only";
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db/prisma";
+import { prisma, prismaTx } from "@/lib/db/prisma";
 import { withSerializableRetry } from "@/lib/db/serializableRetry";
 import { ApiError } from "@/lib/http/api";
 
@@ -82,7 +82,7 @@ export async function expireReservations(limit = 100) {
   });
   let expiredOrders = 0;
   for (const { orderId } of due) {
-    await withSerializableRetry(() => prisma.$transaction(async (tx) => {
+    await withSerializableRetry(() => prismaTx.$transaction(async (tx) => {
       await releaseOrderReservations(tx, orderId, "EXPIRED", "RESERVATION_EXPIRED");
       await tx.payment.updateMany({ where: { orderId, status: { in: ["CREATED", "PENDING"] } }, data: { status: "EXPIRED" } });
       await tx.order.updateMany({ where: { id: orderId, status: { in: ["PENDING_PAYMENT", "PAYMENT_PENDING"] } }, data: { status: "PAYMENT_PENDING" } });

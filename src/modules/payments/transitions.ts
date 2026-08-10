@@ -1,6 +1,6 @@
 import "server-only";
 import { PaymentStatus, Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db/prisma";
+import { prismaTx } from "@/lib/db/prisma";
 import { withSerializableRetry } from "@/lib/db/serializableRetry";
 import { ApiError } from "@/lib/http/api";
 import { hashToken } from "@/lib/security/crypto";
@@ -17,7 +17,7 @@ export async function transitionPayment(input: {
   response?: object;
   reason: string;
 }) {
-  return withSerializableRetry(() => prisma.$transaction(async (tx) => {
+  return withSerializableRetry(() => prismaTx.$transaction(async (tx) => {
     const payment = await tx.payment.findUnique({ where: { id: input.paymentId }, include: { order: { include: { customer: true } } } });
     if (!payment) throw new ApiError("NOT_FOUND", "Payment not found", 404);
     if (payment.status === "SUCCESS") return { changed: false, status: payment.status };

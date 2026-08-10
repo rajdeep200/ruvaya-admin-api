@@ -284,7 +284,7 @@ export async function saveProduct(
   input: EditorInput,
   adminUserId: string,
 ) {
-  const before = await prisma.product.findUnique({
+  let before = await prisma.product.findUnique({
     where: { id },
     include: adminInclude,
   });
@@ -293,6 +293,12 @@ export async function saveProduct(
   try {
     const updated = await withSerializableRetry(() => prismaTx.$transaction(
       async (tx) => {
+        before = await tx.product.findUniqueOrThrow({
+          where: { id },
+          include: adminInclude,
+        });
+        if (before.deletedAt)
+          throw new ApiError("NOT_FOUND", "Product not found", 404);
         await tx.product.update({
           where: { id },
           data: { ...productData(input), version: { increment: 1 } },

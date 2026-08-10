@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { env } from "@/config/env";
 import { createCashfreeOrder, getCashfreeOrder } from "@/lib/cashfree/client";
-import { prisma } from "@/lib/db/prisma";
+import { prisma, prismaTx } from "@/lib/db/prisma";
 import { withSerializableRetry } from "@/lib/db/serializableRetry";
 import { ApiError } from "@/lib/http/api";
 import { paiseToRupees, rupeesToPaise } from "@/lib/money";
@@ -33,7 +33,7 @@ export async function retryPayment(capability: string) {
   const providerIdempotencyKey = randomUUID();
   const attemptNumber = await prisma.payment.count({ where: { orderId: order.id } });
   const providerOrderId = `rv_${order.id}_${attemptNumber + 1}`;
-  const payment = await withSerializableRetry(() => prisma.$transaction(async (tx) => {
+  const payment = await withSerializableRetry(() => prismaTx.$transaction(async (tx) => {
     await reactivateOrderReservations(tx, order.id, new Date(Date.now() + 20 * 60_000));
     return tx.payment.create({ data: { orderId: order.id, providerOrderId, providerIdempotencyKey, status: "CREATED", amountPaise: order.totalPaise } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }));
