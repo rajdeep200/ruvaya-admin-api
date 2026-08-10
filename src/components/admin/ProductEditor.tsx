@@ -838,6 +838,7 @@ export function ProductEditor({ initialProduct, collections }: Props) {
     },
     { label: "Attributes", ok: Boolean(f.fabric && f.shippingInfo) },
   ];
+  const saveLabel = status === "DRAFT" ? "Save draft" : "Update product";
 
   return (
     <div className="product-editor">
@@ -855,7 +856,7 @@ export function ProductEditor({ initialProduct, collections }: Props) {
             disabled={Boolean(busy)}
             onClick={save}
           >
-            {busy === "save" ? "Saving…" : "Save draft"}
+            {busy === "save" ? "Saving…" : saveLabel}
           </button>
           {productId && (
             <button
@@ -2035,17 +2036,24 @@ export function ProductEditor({ initialProduct, collections }: Props) {
           ))}
         </ul>
         <div className="editor-actions">
-          <button type="button" className="btn secondary" onClick={save}>
-            {busy === "save" ? "Saving…" : "Save draft"}
-          </button>
           <button
             type="button"
-            className="btn"
-            disabled={!readiness.every((item) => item.ok) || Boolean(busy)}
-            onClick={() => action("publish")}
+            className={status === "PUBLISHED" ? "btn" : "btn secondary"}
+            disabled={Boolean(busy)}
+            onClick={save}
           >
-            Publish product
+            {busy === "save" ? "Saving…" : saveLabel}
           </button>
+          {status !== "PUBLISHED" && (
+            <button
+              type="button"
+              className="btn"
+              disabled={!readiness.every((item) => item.ok) || Boolean(busy)}
+              onClick={() => action("publish")}
+            >
+              Publish product
+            </button>
+          )}
         </div>
       </Section>
     </div>
