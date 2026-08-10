@@ -4,6 +4,7 @@ import { handleError, ok, parseJson } from "@/lib/http/api";
 import { requireAdmin } from "@/modules/auth/service";
 import { prisma } from "@/lib/db/prisma";
 import { audit } from "@/modules/audit/service";
+import { destroyCloudinaryResource } from "@/lib/cloudinary/client";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -33,8 +34,11 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   try {
     const admin = await requireAdmin("reviews.write");
     const id = (await params).id;
-    const before = await prisma.review.findUniqueOrThrow({ where: { id } });
+    const before = await prisma.review.findUniqueOrThrow({ where: { id }, include: { media: true } });
     await prisma.review.delete({ where: { id } });
+    await Promise.all(
+      before.media.map((m) => destroyCloudinaryResource(m.publicId, "image").catch(() => undefined)),
+    );
     await audit({ adminUserId: admin.id, action: "REVIEW_DELETED", entityType: "Review", entityId: id, before });
     return ok({ deleted: true });
   } catch (error) {

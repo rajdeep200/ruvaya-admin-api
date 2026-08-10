@@ -52,17 +52,17 @@ export function ReviewsAdmin({ allProducts, initialReviews }: Props) {
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [publishNow, setPublishNow] = useState(true);
-  const [images, setImages] = useState<(UploadedImage | null)[]>([]);
+  const [images, setImages] = useState<{ id: string; image: UploadedImage | null }[]>([]);
   const [busy, setBusy] = useState(false);
   const [rowBusyId, setRowBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   function addImageSlot() {
-    setImages((rows) => [...rows, null]);
+    setImages((rows) => [...rows, { id: crypto.randomUUID(), image: null }]);
   }
 
-  function removeImageSlot(index: number) {
-    setImages((rows) => rows.filter((_, i) => i !== index));
+  function removeImageSlot(id: string) {
+    setImages((rows) => rows.filter((row) => row.id !== id));
   }
 
   async function addReview() {
@@ -88,6 +88,7 @@ export function ReviewsAdmin({ allProducts, initialReviews }: Props) {
           text: text.trim(),
           status: publishNow ? "APPROVED" : "PENDING",
           media: images
+            .map((row) => row.image)
             .filter((img): img is UploadedImage => Boolean(img?.publicId))
             .map((img) => ({ publicId: img.publicId, secureUrl: img.url })),
         }),
@@ -197,14 +198,18 @@ export function ReviewsAdmin({ allProducts, initialReviews }: Props) {
         </div>
 
         <div className="media-grid">
-          {images.map((image, index) => (
-            <div key={index} className="source-card">
+          {images.map((slot, index) => (
+            <div key={slot.id} className="source-card">
               <AssetUploadField
                 label={`Photo ${index + 1}`}
-                value={image}
-                onChange={(img) => setImages((rows) => rows.map((row, i) => (i === index ? img : row)))}
+                value={slot.image}
+                signatureEndpoint="/api/v1/admin/reviews/media/upload-signature"
+                confirmEndpoint="/api/v1/admin/reviews/media/confirm"
+                onChange={(img) =>
+                  setImages((rows) => rows.map((row) => (row.id === slot.id ? { ...row, image: img } : row)))
+                }
               />
-              <button type="button" className="text-danger" onClick={() => removeImageSlot(index)}>
+              <button type="button" className="text-danger" onClick={() => removeImageSlot(slot.id)}>
                 Remove
               </button>
             </div>

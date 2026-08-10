@@ -67,6 +67,26 @@ export function siteAssetUploadSignature(resourceType: "image" | "video") {
   };
 }
 
+export function reviewMediaUploadSignature(resourceType: "image" | "video") {
+  const config = configured();
+  const timestamp = Math.floor(Date.now() / 1000);
+  const folder = "ruvaya/reviews";
+  const params = {
+    timestamp,
+    folder,
+    overwrite: false,
+    unique_filename: true,
+    use_filename: false,
+  };
+  return {
+    ...params,
+    resourceType,
+    cloudName: config.cloudName,
+    apiKey: config.apiKey,
+    signature: cloudinary.utils.api_sign_request(params, config.apiSecret),
+  };
+}
+
 export function verifyUploadResponse(
   publicId: string,
   version: number,

@@ -10,9 +10,17 @@ type Props = {
   label: string;
   value: UploadedImage | null;
   onChange: (image: UploadedImage | null) => void;
+  signatureEndpoint?: string;
+  confirmEndpoint?: string;
 };
 
-export function AssetUploadField({ label, value, onChange }: Props) {
+export function AssetUploadField({
+  label,
+  value,
+  onChange,
+  signatureEndpoint = "/api/v1/admin/media-assets/upload-signature",
+  confirmEndpoint = "/api/v1/admin/media-assets/confirm",
+}: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -29,7 +37,7 @@ export function AssetUploadField({ label, value, onChange }: Props) {
     setError("");
     setProgress(0);
     try {
-      const signed = await api("/api/v1/admin/media-assets/upload-signature", {
+      const signed = await api(signatureEndpoint, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ resourceType: "image" }),
@@ -54,7 +62,7 @@ export function AssetUploadField({ label, value, onChange }: Props) {
         };
         xhr.send(form);
       });
-      const confirmed = await api("/api/v1/admin/media-assets/confirm", {
+      const confirmed = await api(confirmEndpoint, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
