@@ -1,1 +1,42 @@
-import{prisma}from"@/lib/db/prisma";export default async function Reviews(){const rows=await prisma.review.findMany({include:{product:true},orderBy:{createdAt:"desc"},take:100});return<><h1>Reviews</h1><p className="muted">Moderation and verified-purchase status</p><div className="card"><table><thead><tr><th>Product</th><th>Customer</th><th>Rating</th><th>Status</th><th>Review</th></tr></thead><tbody>{rows.map(x=><tr key={x.id}><td>{x.product.name}</td><td>{x.displayName}</td><td>{x.rating}/5</td><td><span className="pill">{x.status}</span></td><td><strong>{x.title}</strong><div className="muted">{x.text}</div></td></tr>)}</tbody></table>{!rows.length&&<p className="muted">No reviews awaiting moderation.</p>}</div></>}
+import { prisma } from "@/lib/db/prisma";
+import { ReviewsAdmin } from "@/components/admin/ReviewsAdmin";
+
+export default async function ReviewsPage() {
+  const [products, reviews] = await Promise.all([
+    prisma.product.findMany({
+      where: { deletedAt: null },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, internalCode: true },
+    }),
+    prisma.review.findMany({
+      include: { product: true, media: true },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+  ]);
+
+  return (
+    <>
+      <div className="header">
+        <div>
+          <h1>Reviews</h1>
+          <p className="muted">Moderation, verified-purchase status, and manually added reviews</p>
+        </div>
+      </div>
+      <ReviewsAdmin
+        allProducts={products}
+        initialReviews={reviews.map((r) => ({
+          id: r.id,
+          productId: r.productId,
+          productName: r.product.name,
+          displayName: r.displayName,
+          rating: r.rating,
+          title: r.title,
+          text: r.text,
+          status: r.status,
+          media: r.media.map((m) => ({ id: m.id, secureUrl: m.secureUrl })),
+        }))}
+      />
+    </>
+  );
+}

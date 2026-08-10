@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRef, useState } from "react";
 import { api } from "@/lib/admin/api-client";
 
-export type UploadedImage = { url: string; width: number; height: number; alt: string };
+export type UploadedImage = { url: string; width: number; height: number; alt: string; publicId?: string };
 
 type Props = {
   label: string;
@@ -76,6 +76,7 @@ export function AssetUploadField({ label, value, onChange }: Props) {
         width: confirmed.width,
         height: confirmed.height,
         alt: confirmed.altText ?? "",
+        publicId: confirmed.publicId as string,
       });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Upload failed");
