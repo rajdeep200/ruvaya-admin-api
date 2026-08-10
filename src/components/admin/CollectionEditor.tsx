@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { slugify } from "@/lib/admin/product-form-utils";
 import { api } from "@/lib/admin/api-client";
+import { AssetUploadField, type UploadedImage } from "./AssetUploadField";
 
 type ProductOption = { id: string; name: string; internalCode: string };
 
@@ -30,7 +31,11 @@ export function CollectionEditor({ allProducts, initial }: Props) {
   const [slug, setSlug] = useState(initial?.slug ?? "");
   const [slugEdited, setSlugEdited] = useState(Boolean(initial));
   const [description, setDescription] = useState(initial?.description ?? "");
-  const [imageUrl, setImageUrl] = useState(initial?.imageUrl ?? "");
+  const [image, setImage] = useState<UploadedImage | null>(
+    initial?.imageUrl
+      ? { url: initial.imageUrl, width: 1200, height: 800, alt: initial.name }
+      : null,
+  );
   const [active, setActive] = useState(initial?.active ?? true);
   const [published, setPublished] = useState(Boolean(initial?.publishedAt));
   const [position, setPosition] = useState(String(initial?.position ?? 0));
@@ -55,7 +60,7 @@ export function CollectionEditor({ allProducts, initial }: Props) {
         name,
         slug,
         description: description || undefined,
-        imageUrl: imageUrl || undefined,
+        imageUrl: image?.url || undefined,
         active,
         position: Number(position) || 0,
         productIds,
@@ -67,7 +72,7 @@ export function CollectionEditor({ allProducts, initial }: Props) {
           body: JSON.stringify({
             ...payload,
             description: description || null,
-            imageUrl: imageUrl || null,
+            imageUrl: image?.url || null,
             published,
           }),
         });
@@ -139,14 +144,13 @@ export function CollectionEditor({ allProducts, initial }: Props) {
           Description
           <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
         </label>
-        <label className="field wide">
-          Image URL
-          <input
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            placeholder="https://res.cloudinary.com/..."
-          />
-        </label>
+        <div className="field wide">
+          <AssetUploadField label="Collection image" value={image} onChange={setImage} />
+          <small className="muted">
+            Recommended aspect ratio 3:2 (e.g. 1200×800px) — used for the collection&apos;s
+            homepage tile and its page banner.
+          </small>
+        </div>
         <label className="field">
           Sort position
           <input type="number" min="0" value={position} onChange={(e) => setPosition(e.target.value)} />
