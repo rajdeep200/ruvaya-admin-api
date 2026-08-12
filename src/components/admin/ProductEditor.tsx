@@ -490,6 +490,23 @@ export function ProductEditor({ initialProduct, collections }: Props) {
     return draft.id as string;
   }
 
+  function uniqueColorPrefixes(colors: Array<{ id: string }>) {
+    const prefixes: Record<string, string> = {};
+    for (const { id } of colors) {
+      let len = 3;
+      while (
+        len < id.length &&
+        colors.some(
+          (other) =>
+            other.id !== id &&
+            other.id.slice(0, len).toUpperCase() === id.slice(0, len).toUpperCase(),
+        )
+      )
+        len++;
+      prefixes[id] = id.slice(0, len).toUpperCase();
+    }
+    return prefixes;
+  }
   function regenerateVariants(
     nextSizes = selectedSizes,
     nextColors = selectedColors,
@@ -500,6 +517,7 @@ export function ProductEditor({ initialProduct, collections }: Props) {
       colors = nextHasColors
         ? nextColors
         : [{ id: "default", label: "Default", hex: "#8b6755" }];
+    const colorPrefixes = uniqueColorPrefixes(colors);
     setVariants((current) => {
       const map = new Map(current.map((v) => [`${v.color}|${v.size}`, v]));
       return colors
@@ -509,9 +527,7 @@ export function ProductEditor({ initialProduct, collections }: Props) {
               map.get(`${color.id}|${size}`) ?? {
                 sku: [
                   f.internalCode,
-                  color.id !== "default"
-                    ? color.id.slice(0, 3).toUpperCase()
-                    : "",
+                  color.id !== "default" ? colorPrefixes[color.id] : "",
                   size !== "One Size" ? size : "",
                 ]
                   .filter(Boolean)
