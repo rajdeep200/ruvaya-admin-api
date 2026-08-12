@@ -522,32 +522,38 @@ export function ProductEditor({ initialProduct, collections }: Props) {
       const map = new Map(current.map((v) => [`${v.color}|${v.size}`, v]));
       return colors
         .flatMap((color) =>
-          sizes.map(
-            (size) =>
-              map.get(`${color.id}|${size}`) ?? {
-                sku: [
-                  f.internalCode,
-                  color.id !== "default" ? colorPrefixes[color.id] : "",
-                  size !== "One Size" ? size : "",
-                ]
-                  .filter(Boolean)
-                  .join("-"),
-                color: color.id,
+          sizes.map((size) => {
+            const existing = map.get(`${color.id}|${size}`);
+            if (existing)
+              return {
+                ...existing,
                 colorLabel: color.label,
                 colorHex: color.hex,
-                size,
-                position: 0,
-                regularPricePaise: null,
-                salePricePaise: null,
-                costPricePaise: null,
-                openingStock: 0,
-                reservedStock: 0,
-                lowStockThreshold: 3,
-                active: true,
-                weightGrams: null,
-                mediaId: null,
-              },
-          ),
+              };
+            return {
+              sku: [
+                f.internalCode,
+                color.id !== "default" ? colorPrefixes[color.id] : "",
+                size !== "One Size" ? size : "",
+              ]
+                .filter(Boolean)
+                .join("-"),
+              color: color.id,
+              colorLabel: color.label,
+              colorHex: color.hex,
+              size,
+              position: 0,
+              regularPricePaise: null,
+              salePricePaise: null,
+              costPricePaise: null,
+              openingStock: 0,
+              reservedStock: 0,
+              lowStockThreshold: 3,
+              active: true,
+              weightGrams: null,
+              mediaId: null,
+            };
+          }),
         )
         .map((v, position) => ({ ...v, position }));
     });
@@ -1312,6 +1318,13 @@ export function ProductEditor({ initialProduct, collections }: Props) {
               }}
             >
               Add colour
+            </button>
+            <button
+              type="button"
+              onClick={() => regenerateVariants()}
+              title="Push the colour names/swatches above onto the variant rows below, without touching stock or SKUs"
+            >
+              Sync colours to variants
             </button>
           </div>
         )}

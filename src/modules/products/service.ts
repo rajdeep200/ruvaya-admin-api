@@ -308,10 +308,18 @@ export async function saveProduct(
           keptVariantIds.push(
             await upsertVariant(tx, id, variant, adminUserId),
           );
-        await tx.productVariant.updateMany({
-          where: { productId: id, id: { notIn: keptVariantIds } },
-          data: { active: false },
+        const toDeactivate = await tx.productVariant.findMany({
+          where: { productId: id, id: { notIn: keptVariantIds }, active: true },
+          select: { id: true, sku: true },
         });
+        for (const variant of toDeactivate)
+          await tx.productVariant.update({
+            where: { id: variant.id },
+            data: {
+              active: false,
+              sku: `${variant.sku}-ARCHIVED-${variant.id.slice(-6)}`,
+            },
+          });
         await tx.productMeasurement.deleteMany({ where: { productId: id } });
         if (input.measurements.length)
           await tx.productMeasurement.createMany({
