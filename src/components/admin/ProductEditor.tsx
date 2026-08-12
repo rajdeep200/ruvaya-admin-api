@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { slugify, rupees, paise } from "@/lib/admin/product-form-utils";
-import { api } from "@/lib/admin/api-client";
+import { api, ApiRequestError } from "@/lib/admin/api-client";
 
 type CollectionOption = {
   id: string;
@@ -199,6 +199,23 @@ const SLEEVES = [
   "Full sleeve",
   "Other",
 ];
+
+function describeError(cause: unknown, fallback: string): string {
+  if (
+    cause instanceof ApiRequestError &&
+    Array.isArray(cause.details) &&
+    cause.details.every(
+      (d): d is { path: string; message: string } =>
+        typeof d === "object" &&
+        d !== null &&
+        typeof (d as { path?: unknown }).path === "string" &&
+        typeof (d as { message?: unknown }).message === "string",
+    ) &&
+    cause.details.length
+  )
+    return cause.details.map((d) => `${d.path}: ${d.message}`).join("; ");
+  return cause instanceof Error ? cause.message : fallback;
+}
 
 export function ProductEditor({ initialProduct, collections }: Props) {
   const router = useRouter();
@@ -785,9 +802,7 @@ export function ProductEditor({ initialProduct, collections }: Props) {
       router.replace(`/admin/products/${id}/edit`);
       router.refresh();
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Could not save product",
-      );
+      setError(describeError(cause, "Could not save product"));
     } finally {
       setBusy("");
     }
@@ -815,9 +830,7 @@ export function ProductEditor({ initialProduct, collections }: Props) {
       setDirty(false);
       router.refresh();
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : `Could not ${name} product`,
-      );
+      setError(describeError(cause, `Could not ${name} product`));
     } finally {
       setBusy("");
     }
