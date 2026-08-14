@@ -39,8 +39,19 @@ const adminInclude = {
   sources: { orderBy: { createdAt: "asc" as const } },
 };
 
+export type PublicProductSort = "newest" | "popularity" | "price_asc" | "price_desc";
+
+function effectivePricePaise(p: { regularPricePaise: number; salePricePaise: number | null }) {
+  return p.salePricePaise ?? p.regularPricePaise;
+}
+
+function averageRating(p: { reviews: { rating: number }[] }) {
+  return p.reviews.length ? p.reviews.reduce((sum, r) => sum + r.rating, 0) / p.reviews.length : 0;
+}
+
 export async function listPublicProducts(query: {
   collection?: string;
+  sort?: PublicProductSort;
   page: number;
   pageSize: number;
 }) {
@@ -63,17 +74,34 @@ export async function listPublicProducts(query: {
         }
       : {}),
   };
-  const [items, totalItems] = await prisma.$transaction([
-    prisma.product.findMany({
-      where,
-      include: publicInclude,
-      orderBy: [{ sortPriority: "desc" }, { createdAt: "desc" }],
-      skip: (query.page - 1) * query.pageSize,
-      take: query.pageSize,
-    }),
-    prisma.product.count({ where }),
-  ]);
-  return { items, totalItems };
+  // Catalog is small enough (dozens, not thousands, of products) that sorting
+  // in application code is simpler and more correct than replicating this
+  // COALESCE(salePricePaise, regularPricePaise) logic in a raw SQL orderBy.
+  const all = await prisma.product.findMany({
+    where,
+    include: publicInclude,
+    orderBy: [{ sortPriority: "desc" }, { createdAt: "desc" }],
+  });
+
+  const sorted = [...all];
+  switch (query.sort) {
+    case "price_asc":
+      sorted.sort((a, b) => effectivePricePaise(a) - effectivePricePaise(b));
+      break;
+    case "price_desc":
+      sorted.sort((a, b) => effectivePricePaise(b) - effectivePricePaise(a));
+      break;
+    case "popularity":
+      sorted.sort((a, b) => averageRating(b) - averageRating(a) || b.reviews.length - a.reviews.length);
+      break;
+    case "newest":
+    default:
+      break;
+  }
+
+  const start = (query.page - 1) * query.pageSize;
+  const items = sorted.slice(start, start + query.pageSize);
+  return { items, totalItems: sorted.length };
 }
 
 export async function getPublicProduct(slug: string) {
