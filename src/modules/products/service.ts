@@ -52,9 +52,40 @@ function averageRating(p: { reviews: { rating: number }[] }) {
 export async function listPublicProducts(query: {
   collection?: string;
   sort?: PublicProductSort;
+  sizes?: string[];
+  colors?: string[];
+  fabrics?: string[];
+  occasions?: string[];
+  priceMinPaise?: number;
+  priceMaxPaise?: number;
   page: number;
   pageSize: number;
 }) {
+  // Effective price is COALESCE(salePricePaise, regularPricePaise); expressed
+  // as an OR of "on sale and in range" / "not on sale and regular in range"
+  // since Prisma can't reference a computed COALESCE column directly.
+  const priceRangeCondition: Prisma.ProductWhereInput | undefined =
+    query.priceMinPaise !== undefined || query.priceMaxPaise !== undefined
+      ? {
+          OR: [
+            {
+              salePricePaise: {
+                not: null,
+                ...(query.priceMinPaise !== undefined ? { gte: query.priceMinPaise } : {}),
+                ...(query.priceMaxPaise !== undefined ? { lte: query.priceMaxPaise } : {}),
+              },
+            },
+            {
+              salePricePaise: null,
+              regularPricePaise: {
+                ...(query.priceMinPaise !== undefined ? { gte: query.priceMinPaise } : {}),
+                ...(query.priceMaxPaise !== undefined ? { lte: query.priceMaxPaise } : {}),
+              },
+            },
+          ],
+        }
+      : undefined;
+
   const where: Prisma.ProductWhereInput = {
     status: "PUBLISHED",
     active: true,
@@ -73,6 +104,13 @@ export async function listPublicProducts(query: {
           },
         }
       : {}),
+    ...(query.fabrics?.length ? { fabric: { in: query.fabrics } } : {}),
+    ...(query.occasions?.length ? { occasions: { hasSome: query.occasions } } : {}),
+    ...(query.sizes?.length ? { variants: { some: { active: true, size: { in: query.sizes } } } } : {}),
+    ...(query.colors?.length
+      ? { variants: { some: { active: true, colorLabel: { in: query.colors } } } }
+      : {}),
+    ...(priceRangeCondition ?? {}),
   };
   // Catalog is small enough (dozens, not thousands, of products) that sorting
   // in application code is simpler and more correct than replicating this
