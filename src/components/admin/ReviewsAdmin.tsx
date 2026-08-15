@@ -16,8 +16,13 @@ export type ReviewRow = {
   title: string;
   text: string;
   status: string;
+  createdAt: string;
   media: { id: string; secureUrl: string }[];
 };
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 type Props = {
   allProducts: ProductOption[];
@@ -52,6 +57,7 @@ export function ReviewsAdmin({ allProducts, initialReviews }: Props) {
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [publishNow, setPublishNow] = useState(true);
+  const [postedAt, setPostedAt] = useState(today);
   const [images, setImages] = useState<{ id: string; image: UploadedImage | null }[]>([]);
   const [busy, setBusy] = useState(false);
   const [rowBusyId, setRowBusyId] = useState<string | null>(null);
@@ -87,6 +93,7 @@ export function ReviewsAdmin({ allProducts, initialReviews }: Props) {
           title: title.trim(),
           text: text.trim(),
           status: publishNow ? "APPROVED" : "PENDING",
+          postedAt,
           media: images
             .map((row) => row.image)
             .filter((img): img is UploadedImage => Boolean(img?.publicId))
@@ -103,6 +110,7 @@ export function ReviewsAdmin({ allProducts, initialReviews }: Props) {
           title: created.title,
           text: created.text,
           status: created.status,
+          createdAt: created.createdAt,
           media: created.media,
         },
         ...rows,
@@ -112,6 +120,7 @@ export function ReviewsAdmin({ allProducts, initialReviews }: Props) {
       setTitle("");
       setText("");
       setImages([]);
+      setPostedAt(today());
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not add review");
@@ -191,6 +200,10 @@ export function ReviewsAdmin({ allProducts, initialReviews }: Props) {
             Title (optional)
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Loved it!" />
           </label>
+          <label className="field">
+            Review posted date
+            <input type="date" value={postedAt} max={today()} onChange={(e) => setPostedAt(e.target.value)} />
+          </label>
           <label className="field wide">
             Review text
             <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} placeholder="What the customer said…" />
@@ -241,6 +254,7 @@ export function ReviewsAdmin({ allProducts, initialReviews }: Props) {
                 <th>Rating</th>
                 <th>Status</th>
                 <th>Review</th>
+                <th>Posted</th>
                 <th>Photos</th>
                 <th>Actions</th>
               </tr>
@@ -258,6 +272,7 @@ export function ReviewsAdmin({ allProducts, initialReviews }: Props) {
                     <strong>{r.title}</strong>
                     <div className="muted">{r.text}</div>
                   </td>
+                  <td>{new Date(r.createdAt).toLocaleDateString()}</td>
                   <td>
                     <div className="row-actions">
                       {r.media.map((m) => (

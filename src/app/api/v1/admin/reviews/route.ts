@@ -13,6 +13,11 @@ const createReviewSchema = z.object({
   text: z.string().min(1).max(4000),
   status: z.nativeEnum(ReviewStatus).default("APPROVED"),
   media: z.array(z.object({ publicId: z.string().min(1), secureUrl: z.string().url() })).default([]),
+  postedAt: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .refine((v) => v <= new Date().toISOString().slice(0, 10), "Posted date cannot be in the future")
+    .optional(),
 });
 
 export async function GET() {
@@ -48,6 +53,7 @@ export async function POST(request: Request) {
         displayName: input.displayName,
         displayConsent: true,
         verifiedPurchase: false,
+        createdAt: input.postedAt ? new Date(`${input.postedAt}T12:00:00.000Z`) : undefined,
         media: {
           create: input.media.map((m, position) => ({ publicId: m.publicId, secureUrl: m.secureUrl, position })),
         },

@@ -34,6 +34,7 @@ export default async function ReviewsPage() {
           title: r.title,
           text: r.text,
           status: r.status,
+          createdAt: r.createdAt.toISOString(),
           media: r.media.map((m) => ({ id: m.id, secureUrl: m.secureUrl })),
         }))}
       />
