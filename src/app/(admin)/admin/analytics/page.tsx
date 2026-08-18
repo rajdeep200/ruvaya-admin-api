@@ -1,25 +1,128 @@
-import { prisma } from "@/lib/db/prisma";
+import { getAnalyticsOverview, type RangeDays } from "@/modules/analytics/dashboard";
 import { formatPaise } from "@/lib/money";
+import { RangeControl } from "@/components/admin/analytics/RangeControl";
+import { StatCard } from "@/components/admin/analytics/StatCard";
+import { RevenueChart } from "@/components/admin/analytics/RevenueChart";
+import { ChannelDonut } from "@/components/admin/analytics/ChannelDonut";
+import { FunnelChart } from "@/components/admin/analytics/FunnelChart";
+import { WalletIcon, CartIcon, TargetIcon, UsersIcon, TrendUpIcon, InsightRevenueIcon } from "@/components/admin/analytics/Icons";
 
-const windowStart = new Date(Date.now() - 30 * 86_400_000);
+export const dynamic = "force-dynamic";
 
-export default async function Analytics() {
-  const [events, orders, revenue, top] = await Promise.all([
-    prisma.analyticsEvent.count({ where: { occurredAt: { gte: windowStart } } }),
-    prisma.order.count({ where: { createdAt: { gte: windowStart } } }),
-    prisma.order.aggregate({
-      _sum: { totalPaise: true },
-      where: {
-        createdAt: { gte: windowStart },
-        status: { in: ["PAID", "CONFIRMED", "SOURCING", "READY_TO_SHIP", "SHIPPED", "DELIVERED"] },
-      },
-    }),
-    prisma.analyticsEvent.groupBy({
-      by: ["name"], where: { occurredAt: { gte: windowStart } },
-      _count: { name: true }, orderBy: { _count: { name: "desc" } }, take: 10,
-    }),
-  ]);
-  return <><h1>Analytics</h1><p className="muted">Last 30 days · stored first-party events</p>
-    <div className="grid"><div className="card metric">Events<strong>{events}</strong></div><div className="card metric">Orders<strong>{orders}</strong></div><div className="card metric">Revenue<strong>{formatPaise(revenue._sum.totalPaise ?? 0)}</strong></div><div className="card metric">Conversion<strong>{events ? ((orders / events) * 100).toFixed(2) : "0"}%</strong></div></div>
-    <div className="card" style={{ marginTop: 16 }}><h2>Event volume</h2><table><thead><tr><th>Event</th><th>Count</th></tr></thead><tbody>{top.map((x) => <tr key={x.name}><td>{x.name}</td><td>{x._count.name}</td></tr>)}</tbody></table></div></>;
+const VALID_RANGES: RangeDays[] = [7, 30, 90];
+
+function parseRangeDays(value: string | undefined): RangeDays {
+  const n = Number(value);
+  return VALID_RANGES.includes(n as RangeDays) ? (n as RangeDays) : 7;
+}
+
+const INSIGHT_ICONS = {
+  revenue: InsightRevenueIcon,
+  channel: UsersIcon,
+  funnel: TrendUpIcon,
+  cart: CartIcon,
+};
+
+export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
+  const params = await searchParams;
+  const rangeDays = parseRangeDays(params.range);
+  const data = await getAnalyticsOverview(rangeDays);
+
+  return (
+    <>
+      <div className="analytics-header">
+        <div>
+          <h1>Analytics Overview</h1>
+          <p className="muted">Track your store performance and make data-driven decisions</p>
+        </div>
+        <RangeControl rangeDays={data.rangeDays} previousPeriodLabel={data.previousPeriodLabel} />
+      </div>
+
+      <div className="grid">
+        <StatCard icon={<WalletIcon />} label="Total Revenue" value={formatPaise(data.stats.revenuePaise.current)} stat={data.stats.revenuePaise} rangeDays={rangeDays} />
+        <StatCard icon={<CartIcon />} label="Orders" value={data.stats.orders.current.toLocaleString("en-IN")} stat={data.stats.orders} rangeDays={rangeDays} />
+        <StatCard icon={<TargetIcon />} label="Conversion Rate" value={`${data.stats.conversionRate.current.toFixed(2)}%`} stat={data.stats.conversionRate} rangeDays={rangeDays} />
+        <StatCard icon={<UsersIcon />} label="Total Sessions" value={data.stats.sessions.current.toLocaleString("en-IN")} stat={data.stats.sessions} rangeDays={rangeDays} />
+      </div>
+
+      <div className="dashboard-row">
+        <RevenueChart daily={data.revenueSeries.daily} weekly={data.revenueSeries.weekly} />
+        <ChannelDonut channels={data.channels} totalSessions={data.stats.sessions.current} />
+      </div>
+
+      <div className="dashboard-row-3">
+        <div className="card list-card">
+          <h2>
+            Top Pages by Views <span className="info-dot" title="Events recorded in the selected period, grouped by page path." aria-hidden>ⓘ</span>
+          </h2>
+          <div className="list-body">
+            {data.topPages.length ? (
+              data.topPages.map((page) => {
+                const max = data.topPages[0].count || 1;
+                return (
+                  <div className="bar-row" key={page.path}>
+                    <span className="muted" title={page.path} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {page.path}
+                    </span>
+                    <span className="bar-track">
+                      <span className="bar-fill" style={{ width: `${(page.count / max) * 100}%` }} />
+                    </span>
+                    <span className="bar-count">{page.count}</span>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="muted">No page views recorded yet.</p>
+            )}
+          </div>
+        </div>
+
+        <FunnelChart stages={data.funnel} />
+
+        <div className="card list-card">
+          <h2>
+            Top Products by Views <span className="info-dot" title="Product-linked events in the selected period, grouped by product." aria-hidden>ⓘ</span>
+          </h2>
+          <div className="list-body">
+            {data.topProducts.length ? (
+              data.topProducts.map((product) => (
+                <div className="product-row" key={product.id}>
+                  {product.imageUrl ? (
+                    <img className="product-thumb" src={product.imageUrl} alt="" />
+                  ) : (
+                    <div className="product-thumb" />
+                  )}
+                  <span className="product-name">{product.name}</span>
+                  <span className="product-views">{product.views}</span>
+                </div>
+              ))
+            ) : (
+              <p className="muted">No product views recorded yet.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 16 }}>
+        <h2 style={{ marginTop: 0 }}>Key Insights</h2>
+        <div className="insights-row" style={{ marginTop: 0 }}>
+          {data.insights.length ? (
+            data.insights.map((insight, i) => {
+              const Icon = INSIGHT_ICONS[insight.icon];
+              return (
+                <div className="insight-card" key={i}>
+                  <div className="insight-icon">
+                    <Icon />
+                  </div>
+                  <p>{insight.text}</p>
+                </div>
+              );
+            })
+          ) : (
+            <p className="muted">Insights will appear once there is enough traffic in this period.</p>
+          )}
+        </div>
+      </div>
+    </>
+  );
 }
